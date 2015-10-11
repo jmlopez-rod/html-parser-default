@@ -63,16 +63,16 @@ class ElementNP(NodeParser):
             return None
         char = parser.text[caret+1:caret+2]
         if char.isalpha() or char in [":", "_"]:
-            endindex = parser.text.find('>', caret+1)
-            if endindex == -1:
+            end_index = parser.text.find('>', caret+1)
+            if end_index == -1:
                 return None
             start = parser.text.find('<', caret+1)
-            if start != -1 and start < endindex:
+            if start != -1 and start < end_index:
                 self.msg('E100', parser.pos, parser.compute(start))
                 return None
         else:
             return None
-        return endindex
+        return end_index
 
     def get_raw_text(self, parser, tagname, pos):
         """Return the data content of the RawText object and update
@@ -95,8 +95,8 @@ class ElementNP(NodeParser):
     def make_node(self):
         parser = self.parser
         caret = parser.caret
-        endindex = self.is_element(parser)
-        if endindex is None:
+        end_index = self.is_element(parser)
+        if end_index is None:
             return None
         pos = parser.copy_pos()
         match = RE.search(parser.text, caret+1)
@@ -111,9 +111,10 @@ class ElementNP(NodeParser):
         if parser.text[parser.caret] is '>':
             parser.update(parser.caret+1)
         elif parser.text[parser.caret] is '/':
-            parser.update(endindex+1)
+            parser.update(end_index+1)
         else:
-            self.read_attributes(parser, node, endindex, tagname)
+            self.read_attributes(parser, node, end_index, tagname)
+        node.set_position(*pos)
         if isinstance(node, Void):
             return [node]
         if isinstance(node, RawText):

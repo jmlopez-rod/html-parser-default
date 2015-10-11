@@ -17,27 +17,33 @@ is
     <![CDATA[Cannot have `]]]]><![CDATA[>` inside.]]>
 
 """
-
 from lexor.core.parser import NodeParser
 from lexor.core.elements import CData
 
 
 class CDataNP(NodeParser):
-    """Retrives the data enclosed within `<![CDATA[` and `]]>` and
-    returns a `CData` node. """
+    """Retrieves the data enclosed within `<![CDATA[` and `]]>` and
+    returns a `CData` node.
+    """
 
     def make_node(self):
         parser = self.parser
         caret = parser.caret
         if parser.text[caret:caret+9] != '<![CDATA[':
             return None
+        pos = parser.copy_pos()
         index = parser.text.find(']]>', caret+9)
         if index == -1:
             self.msg('E100', parser.pos)
             parser.update(parser.end)
-            return CData(parser.text[caret+9:parser.end])
+            data = parser.text[caret+9:parser.end]
+            return CData(data).set_position(*pos)
         parser.update(index+3)
-        return CData(parser.text[caret+9:index])
+        data = parser.text[caret+9:index]
+        return CData(data).set_position(*pos)
+
+    def close(self, _):
+        pass
 
 
 MSG = {
