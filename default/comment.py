@@ -7,29 +7,34 @@ with `<!` then it is still a comment but a warning will be issued.
 See: <http://www.w3.org/TR/REC-xml/#sec-comments>
 
 """
-
 from lexor.core.parser import NodeParser
 from lexor.core.writer import replace
 from lexor.core.elements import Comment
+from lexor.util import Position
 
 
 class CommentNP(NodeParser):
     """Creates `Comment` nodes from comments written in HTML. """
 
+    @staticmethod
+    def make_comment(content, pos):
+        return Comment(content).set_position(*pos)
+
     def _handle_bogus(self, parser, caret):
         """Helper method for make_node. """
-        self.msg('E100', parser.pos)
+        pos = parser.copy_pos()
+        self.msg('E100', pos)
         index = parser.text.find('>', caret+2)
         if index == -1:
             parser.update(parser.end)
             self.msg('E201', parser.pos)
             content = parser.text[caret+2:parser.end]
-            return Comment(replace(content, ('--', '- ')))
-        pos = parser.compute(index)
-        self.msg('E300', pos)
+            content = replace(content, ('--', '- '))
+            return self.make_comment(content, pos)
+        self.msg('E300', parser.compute(index))
         parser.update(index+1)
         content = replace(parser.text[caret+2:index], ('--', '- '))
-        return Comment(content)
+        return self.make_comment(content, pos)
 
     def make_node(self):
         parser = self.parser
@@ -38,25 +43,30 @@ class CommentNP(NodeParser):
             return None
         if parser.text[caret+2:caret+4] != '--':
             return self._handle_bogus(parser, caret)
+        pos = parser.copy_pos()
         index = parser.text.find('--', caret+4)
         if index == -1:
             self.msg('E200', parser.pos)
             parser.update(parser.end)
-            return Comment(parser.text[caret+4:parser.end])
+            content = parser.text[caret+4:parser.end]
+            return self.make_comment(content, pos)
         content = parser.text[caret+4:index]
         while parser.text[index:index+3] != '-->':
-            self.msg('E301', parser.compute(index), tuple(parser.pos))
+            self.msg('E301', parser.compute(index), [Position(pos)])
             content += '- '
-            newindex = parser.text.find('--', index+1)
-            if newindex == -1:
+            new_index = parser.text.find('--', index+1)
+            if new_index == -1:
                 content += parser.text[index+2:parser.end]
-                self.msg('E200', parser.pos)
+                self.msg('E200', pos)
                 parser.update(parser.end)
-                return Comment(content)
-            content += parser.text[index+2:newindex]
-            index = newindex
+                return self.make_comment(content, pos)
+            content += parser.text[index+2:new_index]
+            index = new_index
         parser.update(index+3)
-        return Comment(content)
+        return self.make_comment(content, pos)
+
+    def close(self, _):
+        pass
 
 
 MSG = {
@@ -64,7 +74,7 @@ MSG = {
     'E200': '`-->` not found',
     'E201': '`>` not found',
     'E300': '`>` found',
-    'E301': '`--` in comment opened at {0}:{1:2}',
+    'E301': '`--` in comment opened at {0}',
 }
 MSG_EXPLANATION = [
     """
