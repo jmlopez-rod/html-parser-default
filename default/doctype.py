@@ -10,7 +10,6 @@ DOCTYPE is case insensitive in HTML. The following forms are valid:
 See: <http://stackoverflow.com/a/9109157/788553>
 
 """
-
 from lexor.core.parser import NodeParser
 from lexor.core.elements import DocumentType
 
@@ -23,6 +22,7 @@ class DocumentTypeNP(NodeParser):
         caret = parser.caret
         if parser.text[caret:caret+9].lower() != '<!doctype':
             return None
+        pos = parser.copy_pos()
         char = parser.text[caret+9:caret+10]
         if char not in ' \t\n\r\f\v':
             return None
@@ -30,10 +30,14 @@ class DocumentTypeNP(NodeParser):
         if index == -1:
             self.msg('E100', parser.pos)
             parser.update(parser.end)
-            return DocumentType(parser.text[caret+10:parser.end])
+            content = parser.text[caret+10:parser.end]
+            return DocumentType(content).set_position(*pos)
         parser.update(index+1)
-        return DocumentType(parser.text[caret+10:index])
+        content = parser.text[caret+10:index]
+        return DocumentType(content).set_position(*pos)
 
+    def close(self, _):
+        pass
 
 MSG = {
     'E100': '`>` not found',
