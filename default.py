@@ -10,7 +10,7 @@ new lines and tab characters the file might contain.
 from lexor import init, load_aux
 
 INFO = init(
-    version=(0, 0, 1, 'beta', 3),
+    version=(0, 0, 1, 'beta', 4),
     lang='html',
     type='parser',
     description='parses html files',

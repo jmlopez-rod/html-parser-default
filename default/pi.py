@@ -25,6 +25,7 @@ class ProcessingInstructionNP(NodeParser):
     that the target of the `ProcessingInstruction` object that it
     returns has `?` prepended to it. """
 
+    # noinspection PyBroadException
     def assemble_node(self, target, content, pos):
         """Create the processing instruction and compile it if the
         target is for python. """
@@ -33,7 +34,7 @@ class ProcessingInstructionNP(NodeParser):
         if target in ['?py', '?python']:
             try:
                 node.compile_python(self.parser.uri)
-            except SyntaxError:
+            except BaseException:
                 self.msg('E102', pos)
                 err_node = Element('python_pi_error')
                 err_node.set_position(*pos)
@@ -95,5 +96,19 @@ MSG_EXPLANATION = [
     E100: <?php
     E101: <?php echo '<p>Hello World</p>';
 """, """
+    - Python processing instructions must be valid.
+
+    - Invalid code will be replaced with a "python_pi_error" element
+      containing the traceback to help you fix the errors.
+
+    Okay: <?py print 'hello world' ?>
+
+    E102: <?py print 'hello world ?>
+    E102:
+        <?python
+        for i in xrange(5)
+            print 'hello'
+        ?>
+
 """
 ]
