@@ -9,7 +9,7 @@ import re
 from lexor.core.parser import NodeParser
 from lexor.core.elements import Entity, Text
 
-RE = re.compile('.*?[ \t\n\r\f\v;]')
+RE = re.compile('.*?[ \t\n\r\f;]')
 
 
 class EntityNP(NodeParser):
@@ -19,35 +19,38 @@ class EntityNP(NodeParser):
 
     def _handle_lt(self, parser, caret):
         """Helper function for make_node. """
+        pos = parser.copy_pos()
         if parser.text[caret+1:caret+2] == '/':
             tmp = parser.text.find('>', caret+2)
             if tmp == -1:
                 self.msg('E100', parser.pos, ['<'])
                 parser.update(caret+1)
-                return Entity('&lt;')
+                return Entity('&lt;').set_position(*pos)
             else:
                 stray_endtag = parser.text[caret:tmp+1]
                 self.msg('E101', parser.pos, [stray_endtag])
                 parser.update(tmp+1)
-                return Text('')
+                return Text('').set_position(*pos)
         else:
             self.msg('E100', parser.pos, ['<'])
             parser.update(caret+1)
-            return Entity('&lt;')
+            return Entity('&lt;').set_position(*pos)
 
     def _handle_amp(self, parser, caret):
         """Helper function for make_node. """
+        pos = parser.copy_pos()
         match = RE.search(parser.text, caret)
         if not match:
             self.msg('E100', parser.pos, ['&'])
             parser.update(caret+1)
-            return Entity('&amp;')
+            return Entity('&amp;').set_position(*pos)
         if parser.text[match.end()-1] != ';':
             self.msg('E100', parser.pos, ['&'])
             parser.update(caret+1)
-            return Entity('&amp;')
+            return Entity('&amp;').set_position(*pos)
         parser.update(match.end())
-        return Entity(parser.text[caret:match.end()])
+        data = parser.text[caret:match.end()]
+        return Entity(data).set_position(*pos)
 
     def make_node(self):
         parser = self.parser
