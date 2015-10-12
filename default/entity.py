@@ -5,7 +5,6 @@ to display them we need to use HTML entities. The parser defined
 in this module looks for such entities.
 
 """
-
 import re
 from lexor.core.parser import NodeParser
 from lexor.core.elements import Entity, Text
@@ -58,6 +57,9 @@ class EntityNP(NodeParser):
         if parser.text[caret] == '&':
             return self._handle_amp(parser, caret)
         return None
+
+    def close(self, _):
+        pass
 
 
 MSG = {

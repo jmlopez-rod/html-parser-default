@@ -7,15 +7,15 @@ Handles all `Elements` in the form
     </tagname>
 
 """
-
 import re
 from lexor.core.parser import NodeParser
 from lexor.core.elements import Element, Void, RawText
+from lexor.util import Position
 
 
-RE = re.compile(r'.*?[ \t\n\r\f\v/>]')
+RE = re.compile(r'.*?[ \t\n\r\f/>]')
 RE_NOSPACE = re.compile(r"\s*")
-RE_NEXT = re.compile(r'.*?[ \t\n\r\f\v/>=]')
+RE_NEXT = re.compile(r'.*?[ \t\n\r\f/>=]')
 VOID_ELEMENT = (
     'area', 'base', 'basefont', 'br', 'col', 'frame', 'hr', 'img',
     'input', 'isindex', 'link', 'meta', 'param', 'command', 'embed',
@@ -55,7 +55,7 @@ AUTO_CLOSE_FIRST = {
 class ElementNP(NodeParser):
     """Parses all html elements. """
 
-    def is_element(self, parser):
+    def is_element(self, parser, warn=True):
         """Check to see if the parser's caret is positioned in an
         element and return the index where the opening tag ends. """
         caret = parser.caret
@@ -68,7 +68,9 @@ class ElementNP(NodeParser):
                 return None
             start = parser.text.find('<', caret+1)
             if start != -1 and start < end_index:
-                self.msg('E100', parser.pos, parser.compute(start))
+                if warn:
+                    pos = Position(parser.compute(start))
+                    self.msg('E100', parser.pos, [pos])
                 return None
         else:
             return None
@@ -120,7 +122,6 @@ class ElementNP(NodeParser):
         if isinstance(node, RawText):
             node.data = self.get_raw_text(parser, tagname, pos)
             return [node]
-        node.pos = pos
         return node
 
     def close(self, node):
@@ -140,13 +141,14 @@ class ElementNP(NodeParser):
                 parser.update(index+1)
                 return pos
         else:
-            flag = self.is_element(parser)
+            flag = self.is_element(parser, warn=False)
         if flag is None:
             return None
         # http://www.whatwg.org/specs/web-apps/current-work/#optional-tags
         match = RE.search(parser.text, caret+1)
         tmptag = parser.text[parser.caret+1:match.end(0)-1].lower()
-        if node.name in AUTO_CLOSE and tmptag in AUTO_CLOSE[node.name]:
+        if (node.name in AUTO_CLOSE and
+                tmptag in AUTO_CLOSE[node.name]):
             pos = parser.copy_pos()
             return pos
         if node.name in AUTO_CLOSE_FIRST:
@@ -155,7 +157,8 @@ class ElementNP(NodeParser):
                 if isinstance(child, Element):
                     has_element = True
                     break
-            if has_element is False and tmptag in AUTO_CLOSE_FIRST[node.name]:
+            if (has_element is False and
+                    tmptag in AUTO_CLOSE_FIRST[node.name]):
                 pos = parser.copy_pos()
                 return pos
         return None
@@ -217,7 +220,8 @@ class ElementNP(NodeParser):
             quote = parser.text[val_index]
             index = parser.text.find(quote, val_index+1, end)
             if index == -1:
-                self.msg('E150', parser.pos, parser.compute(end))
+                pos = Position(parser.compute(end))
+                self.msg('E150', parser.pos, [pos])
                 parser.update(end+1)
                 return parser.text[val_index+1:end]
             parser.update(index+1)
@@ -252,7 +256,8 @@ class ElementNP(NodeParser):
 
             att1="val1" att2="val2" ...
 
-        This function returns True if the opening tag ends with `/`. """
+        This function returns True if the opening tag ends with `/`.
+        """
         while parser.caret < end:
             prop, prop_index, implied, empty = self.read_prop(
                 parser, node, end, tname
@@ -272,14 +277,14 @@ class ElementNP(NodeParser):
 
 
 MSG = {
-    'E100': 'element discarted due to `<` at {0}:{1:2}',
+    'E100': 'element discarded due to `<` at {0}',
     'E110': '`RawText` closing tag `</{0}>` not found',
     'E120': '`/` not immediately followed by `>`',
     'E121': 'self-closing syntax (`/>`) used in non-void element',
     'E130': 'no space between attributes',
     'E140': '`{0}` found in unquoted attribute value',
     'E141': '`/` found in unquoted attribute value',
-    'E150': 'assuming quoted attribute to close at {0}:{1:2}',
+    'E150': 'assuming quoted attribute to close at {0}',
     'E160': 'attribute name "{0}" has already been declared',
 }
 MSG_EXPLANATION = [
